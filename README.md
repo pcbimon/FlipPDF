@@ -1,7 +1,7 @@
 # PDF Flipbook
 
-[![Build APK](https://github.com/iNT-Mahidol/IdeaSpace-Flipbook-Flutter/actions/workflows/build-apk.yml/badge.svg)](https://github.com/iNT-Mahidol/IdeaSpace-Flipbook-Flutter/actions/workflows/build-apk.yml)
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/iNT-Mahidol/IdeaSpace-Flipbook-Flutter)](https://github.com/iNT-Mahidol/IdeaSpace-Flipbook-Flutter/releases)
+[![Build APK](https://github.com/pcbimon/FlipPDF/actions/workflows/build-apk.yml/badge.svg)](https://github.com/pcbimon/FlipPDF/actions/workflows/build-apk.yml)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/pcbimon/FlipPDF)](https://github.com/pcbimon/FlipPDF/releases)
 [![Flutter](https://img.shields.io/badge/Flutter-3.32.4-blue.svg)](https://flutter.dev/)
 
 แอปพลิเคชันสำหรับอ่าน PDF ในรูปแบบ Flipbook ที่สวยงาม
