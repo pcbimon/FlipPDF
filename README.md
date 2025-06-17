@@ -2,6 +2,9 @@
 
 แอปพลิเคชันสำหรับอ่าน PDF ในรูปแบบ Flipbook ที่สวยงาม
 
+## GitHub Repository
+🔗 [https://github.com/iNT-Mahidol/IdeaSpace-Flipbook-Flutter](https://github.com/iNT-Mahidol/IdeaSpace-Flipbook-Flutter)
+
 ## ฟีเจอร์
 
 - **เลือกไฟล์ PDF**: รองรับการเลือกไฟล์ PDF จากอุปกรณ์
@@ -46,8 +49,13 @@ dependencies:
 
 ## การติดตั้งและใช้งาน
 
-1. Clone โปรเจค
-2. รันคำสั่ง: `flutter pub get`
+### การติดตั้งจาก GitHub
+1. Clone โปรเจค:
+   ```bash
+   git clone https://github.com/iNT-Mahidol/IdeaSpace-Flipbook-Flutter.git
+   cd IdeaSpace-Flipbook-Flutter
+   ```
+2. ติดตั้ง dependencies: `flutter pub get`
 3. รันแอป: `flutter run`
 
 ## วิธีการใช้งาน
