@@ -1,0 +1,244 @@
+name: Build Multi-Platform
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+        
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+        cache: true
+        
+    - name: Get Flutter dependencies
+      run: flutter pub get
+      
+    - name: Build APK
+      run: flutter build apk --release --split-per-abi
+      
+    - name: Upload APK Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-apk
+        path: build/app/outputs/flutter-apk/*.apk
+        retention-days: 30
+
+  build-web:
+    name: Build Web
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+        cache: true
+        
+    - name: Get Flutter dependencies
+      run: flutter pub get
+      
+    - name: Build Web
+      run: flutter build web --release --base-href "/IdeaSpace-Flipbook-Flutter/"
+      
+    - name: Upload Web Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: web-build
+        path: build/web/
+        retention-days: 30
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+        cache: true
+        
+    - name: Get Flutter dependencies
+      run: flutter pub get
+      
+    - name: Build Windows
+      run: flutter build windows --release
+      
+    - name: Create Windows ZIP
+      run: |
+        cd build/windows/x64/runner/Release
+        7z a ../../../../../pdf-flipbook-windows.zip *
+      
+    - name: Upload Windows Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: pdf-flipbook-windows.zip
+        retention-days: 30
+
+  create-release:
+    name: Create Release
+    needs: [build-android, build-web, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+    - name: Download Android APK
+      uses: actions/download-artifact@v4
+      with:
+        name: android-apk
+        path: ./artifacts/android/
+        
+    - name: Download Web Build
+      uses: actions/download-artifact@v4
+      with:
+        name: web-build
+        path: ./artifacts/web/
+        
+    - name: Download Windows Build
+      uses: actions/download-artifact@v4
+      with:
+        name: windows-build
+        path: ./artifacts/windows/
+        
+    - name: Create Web ZIP
+      run: |
+        cd ./artifacts/web
+        zip -r ../pdf-flipbook-web-${{ steps.get_version.outputs.VERSION }}.zip *
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_version.outputs.VERSION }}
+        release_name: PDF Flipbook ${{ steps.get_version.outputs.VERSION }}
+        body: |
+          ## 📱 PDF Flipbook ${{ steps.get_version.outputs.VERSION }}
+          
+          ### ✨ Features
+          - 📖 Beautiful PDF flipbook reader with 3D page flip animation
+          - ⚡ Pre-process PDF pages for smooth performance
+          - 📄 Page status indicator showing current page
+          - 🎨 Modern and intuitive user interface
+          - 📱 Cross-platform: Android, Web, Windows
+          
+          ### 📥 Downloads
+          - **Android APK**: Download the APK files below for different architectures
+          - **Web Version**: Download and host the web version on your server
+          - **Windows**: Download the Windows executable
+          
+          ### 🔧 Installation
+          #### Android
+          1. Download the appropriate APK file for your device
+          2. Enable "Install from Unknown Sources" in your device settings
+          3. Install the APK file
+          
+          #### Web
+          1. Download the web build ZIP file
+          2. Extract and host on your web server
+          3. Access via web browser
+          
+          #### Windows
+          1. Download the Windows ZIP file
+          2. Extract and run the executable
+          
+          ### 📋 Usage
+          1. Open the app
+          2. Tap "เลือกไฟล์ PDF" to select a PDF file
+          3. Tap "เปิด PDF Flipbook" to open the flipbook
+          4. Wait for processing (shows progress)
+          5. Enjoy the flipbook experience with touch gestures
+          
+          ### 🔄 Changes in ${{ steps.get_version.outputs.VERSION }}
+          - Check the commit history for detailed changes
+          
+          ---
+          
+          **Repository**: [IdeaSpace-Flipbook-Flutter](https://github.com/iNT-Mahidol/IdeaSpace-Flipbook-Flutter)
+        draft: false
+        prerelease: false
+        
+    - name: Upload Android APK (arm64-v8a)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/android/app-arm64-v8a-release.apk
+        asset_name: pdf-flipbook-${{ steps.get_version.outputs.VERSION }}-arm64-v8a.apk
+        asset_content_type: application/vnd.android.package-archive
+        
+    - name: Upload Android APK (armeabi-v7a)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/android/app-armeabi-v7a-release.apk
+        asset_name: pdf-flipbook-${{ steps.get_version.outputs.VERSION }}-armeabi-v7a.apk
+        asset_content_type: application/vnd.android.package-archive
+        
+    - name: Upload Android APK (x86_64)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/android/app-x86_64-release.apk
+        asset_name: pdf-flipbook-${{ steps.get_version.outputs.VERSION }}-x86_64.apk
+        asset_content_type: application/vnd.android.package-archive
+        
+    - name: Upload Web Build
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/pdf-flipbook-web-${{ steps.get_version.outputs.VERSION }}.zip
+        asset_name: pdf-flipbook-web-${{ steps.get_version.outputs.VERSION }}.zip
+        asset_content_type: application/zip
+        
+    - name: Upload Windows Build
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/windows/pdf-flipbook-windows.zip
+        asset_name: pdf-flipbook-windows-${{ steps.get_version.outputs.VERSION }}.zip
+        asset_content_type: application/zip
