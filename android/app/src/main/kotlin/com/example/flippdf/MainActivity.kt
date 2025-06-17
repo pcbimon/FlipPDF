@@ -1,4 +1,4 @@
-package th.ac.mahidol.innotech.ideaspace.flippdf
+package com.example.flippdf
 
 import io.flutter.embedding.android.FlutterActivity
 
