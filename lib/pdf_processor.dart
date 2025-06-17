@@ -1,17 +1,17 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:printing/printing.dart';
+import 'package:pdfx/pdfx.dart';
 import 'package:path_provider/path_provider.dart';
 import 'pdf_page.dart';
 
-enum PdfQuality { low, medium, high, ultra }
+enum PdfQuality { low, medium, high, ultra, auto }
 
 class PdfProcessor {
   static final Map<String, List<Widget>> _cache = {};
-
-  static int _getDPI(PdfQuality quality) {
+  static int _getDPI(PdfQuality quality, {Size? screenSize}) {
     switch (quality) {
       case PdfQuality.low:
         return 72;
@@ -21,6 +21,14 @@ class PdfProcessor {
         return 300;
       case PdfQuality.ultra:
         return 600;
+      case PdfQuality.auto:
+        // คำนวณ DPI อัตโนมัติตามหน้าจอ
+        final effectiveScreenSize = screenSize ?? const Size(800, 600);
+        final screenWidth = effectiveScreenSize.width;
+
+        if (screenWidth < 400) return 150; // หน้าจอเล็ก
+        if (screenWidth < 800) return 200; // หน้าจอกลาง
+        return 250; // หน้าจอใหญ่
     }
   }
 
@@ -29,6 +37,7 @@ class PdfProcessor {
     Function(double)? onProgress,
     PdfQuality quality = PdfQuality.medium,
     bool useCache = true,
+    BuildContext? context,
   }) async {
     try {
       // สร้าง cache key
@@ -40,10 +49,11 @@ class PdfProcessor {
       // ตรวจสอบ memory cache
       if (useCache && _cache.containsKey(cacheKey)) {
         return _cache[cacheKey]!;
-      }
-
-      // อ่านไฟล์ PDF
-      final bytes = await file.readAsBytes();
+      } // อ่านไฟล์ PDF
+      final bytes = await file
+          .readAsBytes(); // ดึงข้อมูลหน้าจอก่อนเข้า async function
+      final screenSize = _getScreenSize(context);
+      final dpi = _getDPI(quality, screenSize: screenSize);
 
       // ตรวจสอบ disk cache
       final diskCacheImages = await _loadFromDiskCache(cacheKey);
@@ -56,11 +66,11 @@ class PdfProcessor {
           onProgress(1.0);
         }
       } else {
-        final dpi = _getDPI(quality);
         images = await _convertPDFToImages(
           bytes,
           dpi: dpi,
           onProgress: onProgress,
+          screenSize: screenSize, // ส่ง screenSize แทน context
         );
         // บันทึกลง disk cache
         await _saveToDiskCache(cacheKey, images);
@@ -94,32 +104,69 @@ class PdfProcessor {
     Uint8List pdfBytes, {
     int dpi = 150,
     Function(double)? onProgress,
+    Size? screenSize,
   }) async {
     final images = <Uint8List>[];
+    PdfDocument? document;
 
     try {
-      // ใช้วิธีประมาณจำนวนหน้าที่ไม่ต้องแปลงจริง
-      int totalPages = 0;
-      int currentPage = 0;
+      // เปิด PDF document
+      document = await PdfDocument.openData(pdfBytes);
+      final totalPages = document.pagesCount;
 
-      // แปลง PDF แต่ละหน้าเป็น image ในครั้งเดียว
-      await for (final page in Printing.raster(pdfBytes, dpi: dpi.toDouble())) {
-        final image = await page.toPng();
-        images.add(image);
+      // คำนวณ scale factor จาก DPI
+      final scaleFactor = dpi / 72.0;
 
-        currentPage++;
+      // ใช้ screenSize ที่ส่งมา หรือ default values
+      final effectiveScreenSize = screenSize ?? const Size(800, 600);
+      final screenWidth = effectiveScreenSize.width;
+      final screenHeight = effectiveScreenSize.height;
 
-        // คำนวณ totalPages จากหน้าแรก (ประมาณการ)
-        if (totalPages == 0) {
-          // ใช้ขนาดไฟล์เป็นตัวประมาณ
-          totalPages = (pdfBytes.length / 50000).ceil().clamp(1, 1000);
-        }
+      for (int i = 1; i <= totalPages; i++) {
+        try {
+          // รับหน้า PDF
+          final page = await document.getPage(i); // คำนวณขนาดตาม scale factor
+          var originalWidth = (page.width * scaleFactor);
+          var originalHeight = (page.height * scaleFactor);
 
-        // ส่งความคืบหน้ากลับไป
-        if (onProgress != null) {
-          final progress = (currentPage / totalPages.clamp(currentPage, 1000))
-              .clamp(0.0, 1.0);
-          onProgress(progress);
+          // คำนวณขนาดที่เหมาะสมตามหน้าจอ
+          final maxWidth =
+              screenWidth * 2; // ให้ความละเอียดสูงสุด 2 เท่าของหน้าจอ
+          final maxHeight = screenHeight * 2;
+
+          final optimalSize = _calculateOptimalSize(
+            originalWidth,
+            originalHeight,
+            maxWidth,
+            maxHeight,
+          );
+          final width = optimalSize.width;
+          final height = optimalSize.height;
+
+          // แสดงข้อมูลความละเอียดที่ใช้ (สำหรับ debug)
+          print(
+            'Page $i: Original ${originalWidth.toInt()}x${originalHeight.toInt()} → Optimized ${width.toInt()}x${height.toInt()}',
+          );
+
+          // แปลงเป็นรูปภาพ
+          final pageImage = await page.render(width: width, height: height);
+
+          // แปลงเป็น PNG bytes
+          final pngBytes = pageImage?.bytes;
+          if (pngBytes != null) {
+            images.add(pngBytes);
+          }
+
+          // ปิดหน้าเพื่อปลดปล่อย memory
+          await page.close();
+
+          // ส่งความคืบหน้า
+          if (onProgress != null) {
+            final progress = i / totalPages;
+            onProgress(progress);
+          }
+        } catch (e) {
+          print('Error processing page $i: $e');
         }
       }
 
@@ -129,6 +176,9 @@ class PdfProcessor {
       }
     } catch (e) {
       print('Error converting PDF to images: $e');
+    } finally {
+      // ปิด document เพื่อปลดปล่อย memory
+      await document?.close();
     }
 
     return images;
@@ -144,20 +194,24 @@ class PdfProcessor {
   }
 
   static Future<int> getPDFPageCount(String filePath) async {
+    PdfDocument? document;
     try {
       final file = File(filePath);
       final bytes = await file.readAsBytes();
 
-      // ใช้วิธีที่มีประสิทธิภาพกว่าในการนับหน้า
-      int pageCount = 0;
-      await for (final _ in Printing.raster(bytes, dpi: 72)) {
-        pageCount++;
-      }
+      // เปิด PDF document
+      document = await PdfDocument.openData(bytes);
+
+      // รับจำนวนหน้า
+      final pageCount = document.pagesCount;
 
       return pageCount;
     } catch (e) {
       print('Error getting PDF page count: $e');
       return 0;
+    } finally {
+      // ปิด document เพื่อปลดปล่อย memory
+      await document?.close();
     }
   }
 
@@ -223,5 +277,50 @@ class PdfProcessor {
     } catch (e) {
       print('Error clearing disk cache: $e');
     }
+  }
+
+  // ฟังก์ชันช่วยในการคำนวณขนาดที่เหมาะสมตามหน้าจอ
+  static Size _calculateOptimalSize(
+    double originalWidth,
+    double originalHeight,
+    double maxWidth,
+    double maxHeight,
+  ) {
+    // คำนวณ aspect ratio
+    final aspectRatio = originalWidth / originalHeight;
+
+    double width = originalWidth;
+    double height = originalHeight;
+
+    // ตรวจสอบและปรับขนาดตาม width
+    if (width > maxWidth) {
+      width = maxWidth;
+      height = width / aspectRatio;
+    }
+
+    // ตรวจสอบและปรับขนาดตาม height
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = height * aspectRatio;
+    }
+
+    return Size(width, height);
+  }
+
+  // ฟังก์ชันสำหรับรับข้อมูลหน้าจอจาก context (ถ้ามี)
+  static Size _getScreenSize([BuildContext? context]) {
+    if (context != null) {
+      final mediaQuery = MediaQuery.of(context);
+      return Size(mediaQuery.size.width, mediaQuery.size.height);
+    }
+
+    // ใช้ PlatformDispatcher แทน window (deprecated)
+    final view = ui.PlatformDispatcher.instance.views.first;
+    final screenSize = view.physicalSize;
+    final devicePixelRatio = view.devicePixelRatio;
+    return Size(
+      screenSize.width / devicePixelRatio,
+      screenSize.height / devicePixelRatio,
+    );
   }
 }
