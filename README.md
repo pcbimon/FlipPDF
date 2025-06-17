@@ -7,7 +7,7 @@
 แอปพลิเคชันสำหรับอ่าน PDF ในรูปแบบ Flipbook ที่สวยงาม
 
 ## GitHub Repository
-🔗 [https://github.com/iNT-Mahidol/IdeaSpace-Flipbook-Flutter](https://github.com/iNT-Mahidol/IdeaSpace-Flipbook-Flutter)
+🔗 [https://github.com/pcbimon/FlipPDF](https://github.com/pcbimon/FlipPDF)
 
 ## ฟีเจอร์
 
