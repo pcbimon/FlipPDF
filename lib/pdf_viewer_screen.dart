@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -25,6 +26,24 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
     super.initState();
     // เปิด wakelock เพื่อไม่ให้หน้าจอดับระหว่างอ่าน PDF
     WakelockPlus.enable();
+    // เปิดโหมดเต็มจอ
+    _enableFullScreen();
+  }
+
+  // เปิดโหมดเต็มจอ
+  void _enableFullScreen() {
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.immersiveSticky,
+      overlays: [],
+    );
+  }
+
+  // คืนค่าการแสดงผล UI กลับสู่สถานะปกติ
+  void _disableFullScreen() {
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
   }
 
   @override
@@ -243,6 +262,8 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   void dispose() {
     // ปิด wakelock เมื่อปิดหน้าจอ
     WakelockPlus.disable();
+    // คืนค่าการแสดงผล UI กลับสู่สถานะปกติ
+    _disableFullScreen();
     super.dispose();
   }
 }
