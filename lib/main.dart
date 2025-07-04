@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'pdf_screen.dart';
+import 'pdf_viewer_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -288,17 +289,23 @@ class _FilePickerScreenState extends State<FilePickerScreen>
                             ],
                           ),
                           const SizedBox(height: 15),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      PDFScreen(path: selectedFilePath!),
-                                ),
-                              );
-                            },
-                            child: const Text('เปิด PDF Flipbook'),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => PDFViewerScreen(
+                                        path: selectedFilePath!,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: const Text('เปิด PDF Flipbook'),
+                              ),
+                            ],
                           ),
                         ],
                       ),
