@@ -39,10 +39,12 @@ class _PDFScreenState extends State<PDFScreen> {
     try {
       _setLoadingState();
 
-      final processedPages = await PdfProcessor.processPDF(
+      // เปลี่ยนมาใช้ processLazyPDF เพื่อประหยัดหน่วยความจำ
+      final processedPages = await PdfProcessor.processLazyPDF(
         widget.path!,
         quality: selectedQuality,
         onProgress: _updateProgress,
+        context: context,
       );
 
       if (processedPages.isEmpty) {
@@ -163,6 +165,7 @@ class _PDFScreenState extends State<PDFScreen> {
   /// ล้าง Memory Cache
   void _clearMemoryCache() {
     PdfProcessor.clearCache();
+    PageCacheManager.clearMemoryCache();
     Navigator.of(context).pop();
     _showSnackBar('ล้าง Memory Cache แล้ว');
   }
@@ -170,6 +173,7 @@ class _PDFScreenState extends State<PDFScreen> {
   /// ล้าง Disk Cache
   void _clearDiskCache() async {
     await PdfProcessor.clearDiskCache();
+    await PageCacheManager.clearDiskCache();
     if (mounted) {
       Navigator.of(context).pop();
       _showSnackBar('ล้าง Disk Cache แล้ว');

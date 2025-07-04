@@ -6,8 +6,91 @@ import 'package:flutter/services.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:path_provider/path_provider.dart';
 import 'pdf_page.dart';
+import 'lazy_pdf_page_widget.dart';
 
 enum PdfQuality { low, medium, high, ultra, auto }
+
+/// จัดการ cache สำหรับหน้า PDF แต่ละหน้า
+class PageCacheManager {
+  // Memory cache สำหรับเก็บ Widget ของแต่ละหน้า
+  static final Map<String, Widget> _pageWidgetCache = {};
+
+  // Memory cache สำหรับเก็บข้อมูลรูปภาพของแต่ละหน้า
+  static final Map<String, Uint8List> _pageImageCache = {};
+
+  // ดึง Widget จาก memory cache
+  static Widget? getWidgetFromCache(String cacheKey) {
+    return _pageWidgetCache[cacheKey];
+  }
+
+  // บันทึก Widget ลงใน memory cache
+  static void saveWidgetToCache(String cacheKey, Widget widget) {
+    _pageWidgetCache[cacheKey] = widget;
+  }
+
+  // ดึงข้อมูลรูปภาพจาก memory cache
+  static Uint8List? getImageFromCache(String cacheKey) {
+    return _pageImageCache[cacheKey];
+  }
+
+  // บันทึกข้อมูลรูปภาพลงใน memory cache
+  static void saveImageToCache(String cacheKey, Uint8List imageBytes) {
+    _pageImageCache[cacheKey] = imageBytes;
+  }
+
+  // บันทึกรูปภาพลง disk cache
+  static Future<void> saveImageToDiskCache(String cacheKey, Uint8List imageBytes) async {
+    try {
+      final cacheDir = await getTemporaryDirectory();
+      final pagesCacheFolder = Directory('${cacheDir.path}/pdf_cache/pages');
+
+      if (!await pagesCacheFolder.exists()) {
+        await pagesCacheFolder.create(recursive: true);
+      }
+
+      final cacheFile = File('${pagesCacheFolder.path}/$cacheKey.png');
+      await cacheFile.writeAsBytes(imageBytes);
+    } catch (e) {
+      print('Error saving page to disk cache: $e');
+    }
+  }
+
+  // โหลดรูปภาพจาก disk cache
+  static Future<Uint8List?> loadImageFromDiskCache(String cacheKey) async {
+    try {
+      final cacheDir = await getTemporaryDirectory();
+      final cacheFile = File('${cacheDir.path}/pdf_cache/pages/$cacheKey.png');
+
+      if (await cacheFile.exists()) {
+        return await cacheFile.readAsBytes();
+      }
+      return null;
+    } catch (e) {
+      print('Error loading page from disk cache: $e');
+      return null;
+    }
+  }
+
+  // ล้าง memory cache ทั้งหมด
+  static void clearMemoryCache() {
+    _pageWidgetCache.clear();
+    _pageImageCache.clear();
+  }
+
+  // ล้าง disk cache ทั้งหมด
+  static Future<void> clearDiskCache() async {
+    try {
+      final cacheDir = await getTemporaryDirectory();
+      final pagesCacheFolder = Directory('${cacheDir.path}/pdf_cache/pages');
+
+      if (await pagesCacheFolder.exists()) {
+        await pagesCacheFolder.delete(recursive: true);
+      }
+    } catch (e) {
+      print('Error clearing disk cache: $e');
+    }
+  }
+}
 
 class PdfProcessor {
   static final Map<String, List<Widget>> _cache = {};
@@ -322,5 +405,85 @@ class PdfProcessor {
       screenSize.width / devicePixelRatio,
       screenSize.height / devicePixelRatio,
     );
+  }
+  
+  // เปิดเผย methods ที่ใช้ใน LazyPdfPageWidget
+  static Size getScreenSize([BuildContext? context]) {
+    return _getScreenSize(context);
+  }
+  
+  static int getDPI(PdfQuality quality, {Size? screenSize}) {
+    return _getDPI(quality, screenSize: screenSize);
+  }
+  
+  static Size calculateOptimalSize(
+    double originalWidth,
+    double originalHeight,
+    double maxWidth,
+    double maxHeight,
+  ) {
+    return _calculateOptimalSize(originalWidth, originalHeight, maxWidth, maxHeight);
+  }
+  
+  // ดึง Widget จาก memory cache
+  static Widget? getPageFromMemoryCache(String cacheKey) {
+    return PageCacheManager.getWidgetFromCache(cacheKey);
+  }
+  
+  // บันทึก Widget ลง memory cache
+  static void savePageToMemoryCache(String cacheKey, Widget widget) {
+    PageCacheManager.saveWidgetToCache(cacheKey, widget);
+  }
+  
+  // ดึงรูปภาพหน้า PDF จาก disk cache
+  static Future<Uint8List?> loadSinglePageFromDiskCache(String cacheKey) async {
+    return await PageCacheManager.loadImageFromDiskCache(cacheKey);
+  }
+  
+  // บันทึกรูปภาพหน้า PDF ลง disk cache
+  static Future<void> saveSinglePageToDiskCache(String cacheKey, Uint8List imageBytes) async {
+    await PageCacheManager.saveImageToDiskCache(cacheKey, imageBytes);
+  }
+
+  // แปลงไฟล์ PDF เป็น Lazy Widgets
+  static Future<List<Widget>> processLazyPDF(
+    String filePath, {
+    Function(double)? onProgress,
+    PdfQuality quality = PdfQuality.medium,
+    BuildContext? context,
+  }) async {
+    try {
+      // ดึงจำนวนหน้าทั้งหมด
+      final pageCount = await getPDFPageCount(filePath);
+      
+      if (pageCount == 0) {
+        throw Exception('ไม่สามารถเปิดไฟล์ PDF ได้');
+      }
+      
+      final widgets = <Widget>[];
+      
+      // สร้าง placeholder widgets ที่จะโหลดข้อมูลแบบ lazy
+      for (int i = 0; i < pageCount; i++) {
+        widgets.add(
+          LazyPdfPageWidget(
+            filePath: filePath,
+            pageNumber: i + 1,
+            totalPages: pageCount,
+            quality: quality,
+            context: context,
+          ),
+        );
+        
+        // รายงานความคืบหน้า
+        if (onProgress != null) {
+          onProgress((i + 1) / pageCount);
+        }
+      }
+      
+      return widgets;
+    } catch (e) {
+      print('Error processing lazy PDF: $e');
+      return [];
+    }
   }
 }
