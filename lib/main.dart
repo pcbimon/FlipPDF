@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'pdf_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // เปิด wakelock เพื่อป้องกันหน้าจอปิด
+  WakelockPlus.enable();
+
   runApp(const MyApp());
 }
 
@@ -18,6 +24,16 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const FilePickerScreen(),
+      // เมื่อแอพถูกปิดให้ปิด wakelock ด้วย
+      builder: (context, child) {
+        return GestureDetector(
+          onTap: () {
+            // รีเซ็ต wakelock เมื่อมีการแตะหน้าจอ
+            WakelockPlus.enable();
+          },
+          child: child,
+        );
+      },
     );
   }
 }
@@ -116,9 +132,50 @@ class FilePickerScreen extends StatefulWidget {
   State<FilePickerScreen> createState() => _FilePickerScreenState();
 }
 
-class _FilePickerScreenState extends State<FilePickerScreen> {
+class _FilePickerScreenState extends State<FilePickerScreen>
+    with WidgetsBindingObserver {
   String? selectedFileName;
   String? selectedFilePath;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // ตรวจสอบสถานะ wakelock
+    _checkWakelockStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // เมื่อแอพกลับมาทำงาน ให้เปิด wakelock
+        WakelockPlus.enable();
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        // เมื่อแอพถูกย่อหรือปิด ให้ปิด wakelock เพื่อประหยัดแบตเตอรี่
+        WakelockPlus.disable();
+        break;
+      case AppLifecycleState.inactive:
+        break;
+      case AppLifecycleState.hidden:
+        break;
+    }
+  }
+
+  Future<void> _checkWakelockStatus() async {
+    bool enabled = await WakelockPlus.enabled;
+    if (!enabled) {
+      WakelockPlus.enable();
+    }
+  }
 
   Future<void> _pickPDFFile() async {
     try {
@@ -166,6 +223,33 @@ class _FilePickerScreenState extends State<FilePickerScreen> {
                   'เลือกไฟล์ PDF เพื่อเปิดดูในรูปแบบ Flipbook',
                   style: TextStyle(fontSize: 18),
                   textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.screen_lock_rotation,
+                        color: Colors.green,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'หน้าจอจะไม่ปิดระหว่างใช้งาน',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 30),
                 ElevatedButton.icon(

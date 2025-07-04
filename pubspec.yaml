@@ -40,6 +40,7 @@ dependencies:
   pdf: ^3.11.0
   pdfx: ^2.6.0
   crypto: ^3.0.3
+  wakelock_plus: ^1.2.8
 
 dev_dependencies:
   flutter_launcher_icons: "^0.14.4"

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:page_flip/page_flip.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'pdf_processor.dart';
 
 class PDFScreen extends StatefulWidget {
@@ -23,6 +24,8 @@ class _PDFScreenState extends State<PDFScreen> {
   @override
   void initState() {
     super.initState();
+    // ตรวจสอบให้แน่ใจว่า wakelock เปิดอยู่เมื่อเข้าหน้า PDF
+    WakelockPlus.enable();
     _processPDF();
   }
 
@@ -480,6 +483,8 @@ class _PDFScreenState extends State<PDFScreen> {
 
   @override
   void dispose() {
+    // ไม่ปิด wakelock ที่นี่ เพราะอาจจะกลับไปหน้าหลักและยังต้องการให้หน้าจอไม่ปิด
+    // wakelock จะถูกจัดการโดย lifecycle ของแอพ
     super.dispose();
   }
 }
