@@ -39,8 +39,14 @@ class PageCacheManager {
   }
 
   // บันทึกรูปภาพลง disk cache
-  static Future<void> saveImageToDiskCache(String cacheKey, Uint8List imageBytes) async {
+  static Future<void> saveImageToDiskCache(
+    String cacheKey,
+    Uint8List imageBytes,
+  ) async {
     try {
+      // ทำความสะอาด cacheKey เพื่อไม่ให้มีปัญหากับ path
+      final safeKey = _getSafeCacheKey(cacheKey);
+      
       final cacheDir = await getTemporaryDirectory();
       final pagesCacheFolder = Directory('${cacheDir.path}/pdf_cache/pages');
 
@@ -48,18 +54,36 @@ class PageCacheManager {
         await pagesCacheFolder.create(recursive: true);
       }
 
-      final cacheFile = File('${pagesCacheFolder.path}/$cacheKey.png');
+      final cacheFile = File('${pagesCacheFolder.path}/$safeKey.png');
       await cacheFile.writeAsBytes(imageBytes);
     } catch (e) {
       print('Error saving page to disk cache: $e');
     }
   }
+  
+  // ทำความสะอาด cache key เพื่อใช้เป็นชื่อไฟล์ที่ปลอดภัย
+  static String _getSafeCacheKey(String key) {
+    // แทนที่อักขระที่ไม่ปลอดภัยสำหรับชื่อไฟล์
+    return key
+        .replaceAll('/', '_')
+        .replaceAll('\\', '_')
+        .replaceAll(':', '_')
+        .replaceAll('*', '_')
+        .replaceAll('?', '_')
+        .replaceAll('"', '_')
+        .replaceAll('<', '_')
+        .replaceAll('>', '_')
+        .replaceAll('|', '_')
+        .replaceAll(' ', '_');
+  }
 
   // โหลดรูปภาพจาก disk cache
   static Future<Uint8List?> loadImageFromDiskCache(String cacheKey) async {
     try {
+      final safeKey = _getSafeCacheKey(cacheKey);
+      
       final cacheDir = await getTemporaryDirectory();
-      final cacheFile = File('${cacheDir.path}/pdf_cache/pages/$cacheKey.png');
+      final cacheFile = File('${cacheDir.path}/pdf_cache/pages/$safeKey.png');
 
       if (await cacheFile.exists()) {
         return await cacheFile.readAsBytes();
@@ -406,42 +430,50 @@ class PdfProcessor {
       screenSize.height / devicePixelRatio,
     );
   }
-  
+
   // เปิดเผย methods ที่ใช้ใน LazyPdfPageWidget
   static Size getScreenSize([BuildContext? context]) {
     return _getScreenSize(context);
   }
-  
+
   static int getDPI(PdfQuality quality, {Size? screenSize}) {
     return _getDPI(quality, screenSize: screenSize);
   }
-  
+
   static Size calculateOptimalSize(
     double originalWidth,
     double originalHeight,
     double maxWidth,
     double maxHeight,
   ) {
-    return _calculateOptimalSize(originalWidth, originalHeight, maxWidth, maxHeight);
+    return _calculateOptimalSize(
+      originalWidth,
+      originalHeight,
+      maxWidth,
+      maxHeight,
+    );
   }
-  
+
   // ดึง Widget จาก memory cache
   static Widget? getPageFromMemoryCache(String cacheKey) {
     return PageCacheManager.getWidgetFromCache(cacheKey);
   }
-  
+
   // บันทึก Widget ลง memory cache
   static void savePageToMemoryCache(String cacheKey, Widget widget) {
     PageCacheManager.saveWidgetToCache(cacheKey, widget);
   }
-  
+
   // ดึงรูปภาพหน้า PDF จาก disk cache
   static Future<Uint8List?> loadSinglePageFromDiskCache(String cacheKey) async {
     return await PageCacheManager.loadImageFromDiskCache(cacheKey);
   }
-  
+
   // บันทึกรูปภาพหน้า PDF ลง disk cache
-  static Future<void> saveSinglePageToDiskCache(String cacheKey, Uint8List imageBytes) async {
+  static Future<void> saveSinglePageToDiskCache(
+    String cacheKey,
+    Uint8List imageBytes,
+  ) async {
     await PageCacheManager.saveImageToDiskCache(cacheKey, imageBytes);
   }
 
@@ -455,13 +487,13 @@ class PdfProcessor {
     try {
       // ดึงจำนวนหน้าทั้งหมด
       final pageCount = await getPDFPageCount(filePath);
-      
+
       if (pageCount == 0) {
         throw Exception('ไม่สามารถเปิดไฟล์ PDF ได้');
       }
-      
+
       final widgets = <Widget>[];
-      
+
       // สร้าง placeholder widgets ที่จะโหลดข้อมูลแบบ lazy
       for (int i = 0; i < pageCount; i++) {
         widgets.add(
@@ -473,13 +505,13 @@ class PdfProcessor {
             context: context,
           ),
         );
-        
+
         // รายงานความคืบหน้า
         if (onProgress != null) {
           onProgress((i + 1) / pageCount);
         }
       }
-      
+
       return widgets;
     } catch (e) {
       print('Error processing lazy PDF: $e');

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:page_flip/page_flip.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'pdf_processor.dart';
+import 'lazy_pdf_page_widget.dart';
 
 class PDFScreen extends StatefulWidget {
   final String? path;
@@ -166,6 +167,7 @@ class _PDFScreenState extends State<PDFScreen> {
   void _clearMemoryCache() {
     PdfProcessor.clearCache();
     PageCacheManager.clearMemoryCache();
+    PdfDocumentCache.clearCache();
     Navigator.of(context).pop();
     _showSnackBar('ล้าง Memory Cache แล้ว');
   }
@@ -556,6 +558,8 @@ class _PDFScreenState extends State<PDFScreen> {
 
   @override
   void dispose() {
+    // ล้าง document cache เมื่อปิดหน้าจอ
+    PdfDocumentCache.clearCache();
     // ไม่ปิด wakelock ที่นี่ เพราะอาจจะกลับไปหน้าหลักและยังต้องการให้หน้าจอไม่ปิด
     // wakelock จะถูกจัดการโดย lifecycle ของแอพ
     super.dispose();
