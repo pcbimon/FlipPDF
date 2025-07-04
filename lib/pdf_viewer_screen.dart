@@ -21,6 +21,13 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   bool isReady = false;
   String errorMessage = '';
 
+  // ตัวแปรสำหรับการเปลี่ยนหน้าอัตโนมัติ
+  bool _isAutoPlaying = false;
+  Timer? _autoPlayTimer;
+  Timer? _countdownTimer;
+  final int _autoPlayInterval = 10; // เวลาในการเปลี่ยนหน้าอัตโนมัติ (วินาที)
+  double _countdown = 0; // ค่าการนับถอยหลัง (0.0 - 1.0)
+
   @override
   void initState() {
     super.initState();
@@ -234,7 +241,47 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
       right: 10,
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [_buildPageCounter()],
+        children: [
+          _buildAutoPlayButton(),
+          const SizedBox(width: 8),
+          _buildPageCounter(),
+        ],
+      ),
+    );
+  }
+
+  /// สร้างปุ่มเล่น/หยุดอัตโนมัติ
+  Widget _buildAutoPlayButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // แสดงการนับถอยหลังเป็นวงกลมรอบปุ่ม
+          if (_isAutoPlaying)
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: CircularProgressIndicator(
+                value: _countdown,
+                backgroundColor: Colors.grey.withOpacity(0.3),
+                color: Colors.blue,
+                strokeWidth: 3,
+              ),
+            ),
+          // ปุ่ม play/pause
+          IconButton(
+            icon: Icon(
+              _isAutoPlaying ? Icons.pause : Icons.play_arrow,
+              color: Colors.white,
+            ),
+            onPressed: _toggleAutoPlay,
+            tooltip: _isAutoPlaying ? 'หยุดเล่นอัตโนมัติ' : 'เล่นอัตโนมัติ',
+          ),
+        ],
       ),
     );
   }
@@ -258,12 +305,105 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
     );
   }
 
+  // เริ่มการเปลี่ยนหน้าอัตโนมัติ
+  void _startAutoPlay() {
+    if (_isAutoPlaying || !isReady) return;
+
+    setState(() {
+      _isAutoPlaying = true;
+      _countdown = 1.0; // เริ่มที่ 100%
+    });
+
+    _autoPlayTimer = Timer.periodic(Duration(seconds: _autoPlayInterval), (
+      timer,
+    ) {
+      _goToNextPage();
+      setState(() {
+        _countdown = 1.0; // รีเซ็ตเป็น 100% หลังจากเปลี่ยนหน้า
+      });
+    });
+
+    // ตั้งค่า timer สำหรับนับถอยหลัง
+    _startCountdownTimer();
+  }
+
+  // เริ่มการนับถอยหลัง
+  void _startCountdownTimer() {
+    // ยกเลิก timer เดิมถ้ามี
+    _countdownTimer?.cancel();
+
+    // อัพเดททุก 100 มิลลิวินาที (10 ครั้งต่อวินาที)
+    const updateInterval = 100;
+    final totalUpdates = _autoPlayInterval * 10; // จำนวนครั้งทั้งหมดในการอัพเดท
+    final decrementPerUpdate = 1.0 / totalUpdates; // ค่าที่ลดลงในแต่ละครั้ง
+
+    _countdownTimer = Timer.periodic(Duration(milliseconds: updateInterval), (
+      timer,
+    ) {
+      if (!_isAutoPlaying) {
+        timer.cancel();
+        return;
+      }
+
+      setState(() {
+        _countdown -= decrementPerUpdate;
+        if (_countdown < 0) _countdown = 0;
+      });
+    });
+  }
+
+  // หยุดการเปลี่ยนหน้าอัตโนมัติ
+  void _stopAutoPlay() {
+    if (!_isAutoPlaying) return;
+
+    _autoPlayTimer?.cancel();
+    _autoPlayTimer = null;
+
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+
+    setState(() {
+      _isAutoPlaying = false;
+      _countdown = 0;
+    });
+  }
+
+  // สลับระหว่างการเล่นอัตโนมัติและการหยุด
+  void _toggleAutoPlay() {
+    if (_isAutoPlaying) {
+      _stopAutoPlay();
+    } else {
+      _startAutoPlay();
+    }
+  }
+
+  // ไปยังหน้าถัดไป
+  void _goToNextPage() async {
+    if (!isReady) return;
+
+    final controller = await _controller.future;
+    final currentPageIndex = currentPage ?? 0;
+    final totalPagesCount = totalPages ?? 0;
+
+    if (currentPageIndex < totalPagesCount - 1) {
+      controller.setPage(currentPageIndex + 1);
+    } else {
+      // กลับไปหน้าแรกเมื่อถึงหน้าสุดท้าย
+      controller.setPage(0);
+    }
+  }
+
   @override
   void dispose() {
     // ปิด wakelock เมื่อปิดหน้าจอ
     WakelockPlus.disable();
     // คืนค่าการแสดงผล UI กลับสู่สถานะปกติ
     _disableFullScreen();
+    // หยุดการเปลี่ยนหน้าอัตโนมัติ
+    _stopAutoPlay();
+    // ยกเลิก timer ทั้งหมด
+    _autoPlayTimer?.cancel();
+    _countdownTimer?.cancel();
     super.dispose();
   }
 }
