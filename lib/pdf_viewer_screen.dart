@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'localizations.dart';
 
 class PDFViewerScreen extends StatefulWidget {
   final String? path;
@@ -21,23 +22,23 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   bool isReady = false;
   String errorMessage = '';
 
-  // ตัวแปรสำหรับการเปลี่ยนหน้าอัตโนมัติ
+  // Variables for auto page turning
   bool _isAutoPlaying = false;
   Timer? _autoPlayTimer;
   Timer? _countdownTimer;
-  final int _autoPlayInterval = 10; // เวลาในการเปลี่ยนหน้าอัตโนมัติ (วินาที)
-  double _countdown = 0; // ค่าการนับถอยหลัง (0.0 - 1.0)
+  final int _autoPlayInterval = 10; // Time for auto page turning (seconds)
+  double _countdown = 0; // Countdown value (0.0 - 1.0)
 
   @override
   void initState() {
     super.initState();
-    // เปิด wakelock เพื่อไม่ให้หน้าจอดับระหว่างอ่าน PDF
+    // Enable wakelock to prevent screen from turning off while reading PDF
     WakelockPlus.enable();
-    // เปิดโหมดเต็มจอ
+    // Enable fullscreen mode
     _enableFullScreen();
   }
 
-  // เปิดโหมดเต็มจอ
+  // Enable fullscreen mode
   void _enableFullScreen() {
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.immersiveSticky,
@@ -45,7 +46,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
     );
   }
 
-  // คืนค่าการแสดงผล UI กลับสู่สถานะปกติ
+  // Restore UI display to normal state
   void _disableFullScreen() {
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
@@ -76,7 +77,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
     );
   }
 
-  /// สร้าง AppBar โปร่งใส
+  /// Create transparent AppBar
   PreferredSizeWidget _buildAppBar() {
     return PreferredSize(
       preferredSize: const Size.fromHeight(0),
@@ -88,7 +89,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
     );
   }
 
-  /// แสดง Dialog ยืนยันการปิด PDF
+  /// Show Dialog to confirm PDF closure
   Future<bool> _onWillPop() async {
     final shouldPop = await showDialog<bool>(
       context: context,
@@ -97,32 +98,35 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
     return shouldPop ?? false;
   }
 
-  /// สร้าง Dialog สำหรับยืนยันการปิด
+  /// Create Dialog for closure confirmation
   Widget _buildExitDialog(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: const Text('ปิด PDF Viewer'),
-      content: const Text('คุณต้องการปิด PDF Viewer หรือไม่?'),
+      title: const Text('PDF Viewer'),
+      content: Text(localizations.confirmExit),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('ยกเลิก'),
+          child: Text(localizations.no),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('ปิด'),
+          child: Text(localizations.yes),
         ),
       ],
     );
   }
 
   Widget _buildBody() {
+    final localizations = AppLocalizations.of(context)!;
+    
     if (widget.path == null || widget.path!.isEmpty) {
-      return _buildErrorView('ไม่พบไฟล์ PDF');
+      return _buildErrorView(localizations.pdfNotFound);
     }
 
     final file = File(widget.path!);
     if (!file.existsSync()) {
-      return _buildErrorView('ไฟล์ PDF ไม่มีอยู่ในระบบ');
+      return _buildErrorView(localizations.pdfFileNotExist);
     }
 
     if (errorMessage.isNotEmpty) {
@@ -156,8 +160,10 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
         print('PDF Error: $error');
       },
       onPageError: (page, error) {
+        final localizations = AppLocalizations.of(context);
         setState(() {
-          errorMessage = 'เกิดข้อผิดพลาดที่หน้า $page: $error';
+          errorMessage = localizations?.pageError(page, error.toString()) ?? 
+                        'Error occurred on page $page: $error';
         });
         print('PDF Page Error: $error');
       },
@@ -176,8 +182,9 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
     );
   }
 
-  /// สร้างหน้าจอแสดงข้อผิดพลาด
+  /// Create error display screen
   Widget _buildErrorView(String message) {
+    final localizations = AppLocalizations.of(context)!;
     return Container(
       color: Colors.black,
       child: Center(
@@ -198,7 +205,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
                 backgroundColor: Colors.white,
                 foregroundColor: Colors.black,
               ),
-              child: const Text('กลับ'),
+              child: Text(localizations.back),
             ),
           ],
         ),

@@ -45,6 +45,11 @@ class AppLocalizations {
       'language': 'Language',
       'english': 'English',
       'thai': 'ไทย',
+      'tryAgain': 'Try Again',
+      'ultraQuality': 'Ultra Quality (Slow)',
+      'noPagesFound': 'No PDF pages found',
+      'endOfDocument': 'End of Document',
+      'thankYou': 'Thank you for reading',
     },
     'th': {
       'appTitle': 'PDF Flipbook',
@@ -76,6 +81,11 @@ class AppLocalizations {
       'language': 'ภาษา',
       'english': 'English',
       'thai': 'ไทย',
+      'tryAgain': 'ลองใหม่',
+      'ultraQuality': 'คุณภาพสูงสุด (ช้า)',
+      'noPagesFound': 'ไม่พบหน้า PDF',
+      'endOfDocument': 'จบเอกสาร',
+      'thankYou': 'หวัดดีและขอบคุณ',
     },
   };
 
@@ -105,6 +115,11 @@ class AppLocalizations {
   String get language => _localizedValues[locale.languageCode]!['language']!;
   String get english => _localizedValues[locale.languageCode]!['english']!;
   String get thai => _localizedValues[locale.languageCode]!['thai']!;
+  String get tryAgain => _localizedValues[locale.languageCode]!['tryAgain'] ?? 'Try Again';
+  String get ultraQuality => _localizedValues[locale.languageCode]!['ultraQuality'] ?? 'Ultra Quality (Slow)';
+  String get noPagesFound => _localizedValues[locale.languageCode]!['noPagesFound'] ?? 'No PDF pages found';
+  String get endOfDocument => _localizedValues[locale.languageCode]!['endOfDocument'] ?? 'End of Document';
+  String get thankYou => _localizedValues[locale.languageCode]!['thankYou'] ?? 'Thank you for reading';
 
   String selectedFile(String fileName) {
     return _localizedValues[locale.languageCode]!['selectedFile']!
