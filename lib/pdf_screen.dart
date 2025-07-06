@@ -4,6 +4,7 @@ import 'package:page_flip/page_flip.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'pdf_processor.dart';
 import 'lazy_pdf_page_widget.dart';
+import 'localizations.dart';
 
 class PDFScreen extends StatefulWidget {
   final String? path;
@@ -19,28 +20,29 @@ class _PDFScreenState extends State<PDFScreen> {
   String errorMessage = '';
   int totalPages = 0;
   int currentPage = 0;
-  double processingProgress = 0.0; // เพิ่มตัวแปรสำหรับความคืบหน้า
-  PdfQuality selectedQuality = PdfQuality.medium; // เพิ่มตัวแปรสำหรับคุณภาพ
+  double processingProgress = 0.0; // Variable for processing progress
+  PdfQuality selectedQuality = PdfQuality.medium; // Variable for quality setting
 
   @override
   void initState() {
     super.initState();
-    // ตรวจสอบให้แน่ใจว่า wakelock เปิดอยู่เมื่อเข้าหน้า PDF
+    // Ensure wakelock is enabled when entering PDF screen
     WakelockPlus.enable();
     _processPDF();
   }
 
-  /// ประมวลผล PDF และแปลงเป็น Widget pages
+  /// Process PDF and convert to Widget pages
   Future<void> _processPDF() async {
     if (widget.path == null) {
-      _setError('ไม่พบไฟล์ PDF');
+      final localizations = AppLocalizations.of(context);
+      _setError(localizations?.pdfNotFound ?? 'PDF file not found');
       return;
     }
 
     try {
       _setLoadingState();
 
-      // เปลี่ยนมาใช้ processLazyPDF เพื่อประหยัดหน่วยความจำ
+      // Use processLazyPDF to save memory
       final processedPages = await PdfProcessor.processLazyPDF(
         widget.path!,
         quality: selectedQuality,
@@ -49,17 +51,19 @@ class _PDFScreenState extends State<PDFScreen> {
       );
 
       if (processedPages.isEmpty) {
-        _setError('ไม่สามารถประมวลผล PDF ได้');
+        final localizations = AppLocalizations.of(context);
+        _setError(localizations?.cannotProcessPDF ?? 'Cannot process PDF file');
         return;
       }
 
       _setSuccessState(processedPages);
     } catch (e) {
-      _setError('เกิดข้อผิดพลาด: ${e.toString()}');
+      final localizations = AppLocalizations.of(context);
+      _setError(localizations?.errorOccurred(e.toString()) ?? 'An error occurred: ${e.toString()}');
     }
   }
 
-  /// ตั้งค่าสถานะ Loading
+  /// Set Loading state
   void _setLoadingState() {
     setState(() {
       isLoading = true;
@@ -68,14 +72,14 @@ class _PDFScreenState extends State<PDFScreen> {
     });
   }
 
-  /// อัปเดตความคืบหน้า
+  /// Update progress
   void _updateProgress(double progress) {
     setState(() {
       processingProgress = progress;
     });
   }
 
-  /// ตั้งค่าสถานะ Error
+  /// Set Error state
   void _setError(String message) {
     setState(() {
       errorMessage = message;
@@ -84,7 +88,7 @@ class _PDFScreenState extends State<PDFScreen> {
     });
   }
 
-  /// ตั้งค่าสถานะสำเร็จ
+  /// Set Success state
   void _setSuccessState(List<Widget> pages) {
     setState(() {
       pdfPages = pages;
@@ -94,7 +98,7 @@ class _PDFScreenState extends State<PDFScreen> {
     });
   }
 
-  /// แสดง Dialog ยืนยันการปิด PDF
+  /// Show Dialog to confirm PDF closure
   Future<bool> _onWillPop() async {
     final shouldPop = await showDialog<bool>(
       context: context,
@@ -103,44 +107,46 @@ class _PDFScreenState extends State<PDFScreen> {
     return shouldPop ?? false;
   }
 
-  /// สร้าง Dialog สำหรับยืนยันการปิด
+  /// Create Dialog for closure confirmation
   Widget _buildExitDialog(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: const Text('ปิด PDF Flipbook'),
-      content: const Text('คุณต้องการปิด PDF Flipbook หรือไม่?'),
+      title: const Text('PDF Flipbook'),
+      content: Text(localizations.confirmExit),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('ยกเลิก'),
+          child: Text(localizations.no),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('ปิด'),
+          child: Text(localizations.yes),
         ),
       ],
     );
   }
 
-  /// แสดงตัวเลือก Cache
+  /// Show Cache options
   void _showCacheOptions() {
     showDialog(context: context, builder: _buildCacheDialog);
   }
 
-  /// สร้าง Dialog สำหรับจัดการ Cache
+  /// Create Dialog for Cache management
   Widget _buildCacheDialog(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: const Text('ตัวเลือก Cache'),
+      title: Text(localizations.cacheOptions),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildCacheOption(
             icon: Icons.delete_outline,
-            title: 'ล้าง Memory Cache',
+            title: localizations.clearMemoryCache,
             onTap: _clearMemoryCache,
           ),
           _buildCacheOption(
             icon: Icons.delete_forever,
-            title: 'ล้าง Disk Cache',
+            title: localizations.clearDiskCache,
             onTap: _clearDiskCache,
           ),
         ],
@@ -148,13 +154,13 @@ class _PDFScreenState extends State<PDFScreen> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('ปิด'),
+          child: Text(localizations.close),
         ),
       ],
     );
   }
 
-  /// สร้างตัวเลือก Cache แต่ละตัว
+  /// Create each Cache option
   Widget _buildCacheOption({
     required IconData icon,
     required String title,
@@ -163,30 +169,30 @@ class _PDFScreenState extends State<PDFScreen> {
     return ListTile(leading: Icon(icon), title: Text(title), onTap: onTap);
   }
 
-  /// ล้าง Memory Cache
+  /// Clear Memory Cache
   void _clearMemoryCache() {
     PdfProcessor.clearCache();
     PageCacheManager.clearMemoryCache();
     PdfDocumentCache.clearCache();
     Navigator.of(context).pop();
-    _showSnackBar('ล้าง Memory Cache แล้ว');
+    final localizations = AppLocalizations.of(context);
+    _showSnackBar(localizations?.memoryCacheCleared ?? 'Memory cache cleared');
   }
 
-  /// ล้าง Disk Cache
+  /// Clear Disk Cache
   void _clearDiskCache() async {
     await PdfProcessor.clearDiskCache();
     await PageCacheManager.clearDiskCache();
     if (mounted) {
       Navigator.of(context).pop();
-      _showSnackBar('ล้าง Disk Cache แล้ว');
+      final localizations = AppLocalizations.of(context);
+      _showSnackBar(localizations?.diskCacheCleared ?? 'Disk cache cleared');
     }
   }
 
-  /// แสดง SnackBar
+  /// Show SnackBar
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -215,7 +221,7 @@ class _PDFScreenState extends State<PDFScreen> {
     );
   }
 
-  /// สร้าง AppBar โปร่งใส
+  /// Create transparent AppBar
   PreferredSizeWidget _buildAppBar() {
     return PreferredSize(
       preferredSize: const Size.fromHeight(0),
@@ -227,12 +233,12 @@ class _PDFScreenState extends State<PDFScreen> {
     );
   }
 
-  /// สร้าง Overlay Controls (ปุ่ม back และตัวเลือกต่างๆ)
+  /// Create Overlay Controls (back button and options)
   Widget _buildOverlayControls() {
     return Stack(children: [_buildBackButton(), _buildTopRightControls()]);
   }
 
-  /// สร้างปุ่ม Back ที่มุมซ้ายบน
+  /// Create Back button at top left
   Widget _buildBackButton() {
     return Positioned(
       top: MediaQuery.of(context).padding.top + 10,
@@ -255,7 +261,7 @@ class _PDFScreenState extends State<PDFScreen> {
     );
   }
 
-  /// สร้างส่วน Controls ที่มุมขวาบน (ปุ่มตั้งค่าและหมายเลขหน้า)
+  /// Create Controls section at top right (settings button and page counter)
   Widget _buildTopRightControls() {
     return Positioned(
       top: MediaQuery.of(context).padding.top + 10,
@@ -271,7 +277,7 @@ class _PDFScreenState extends State<PDFScreen> {
     );
   }
 
-  /// สร้างปุ่มตั้งค่า (เลือกคุณภาพและจัดการ Cache)
+  /// Create settings button (quality selection and Cache management)
   Widget _buildSettingsButton() {
     return Container(
       decoration: BoxDecoration(
@@ -286,7 +292,7 @@ class _PDFScreenState extends State<PDFScreen> {
     );
   }
 
-  /// จัดการการเลือกตัวเลือกจากเมนูตั้งค่า
+  /// Handle settings menu selection
   void _handleSettingsSelection(String value) {
     if (value == 'cache') {
       _showCacheOptions();
@@ -299,28 +305,29 @@ class _PDFScreenState extends State<PDFScreen> {
     }
   }
 
-  /// สร้างรายการเมนูตั้งค่า
+  /// Create settings menu items
   List<PopupMenuEntry<String>> _buildSettingsMenuItems() {
+    final localizations = AppLocalizations.of(context)!;
     return [
-      _buildQualityMenuItem(PdfQuality.low, 'คุณภาพต่ำ (เร็ว)'),
-      _buildQualityMenuItem(PdfQuality.medium, 'คุณภาพปานกลาง'),
-      _buildQualityMenuItem(PdfQuality.high, 'คุณภาพสูง'),
-      _buildQualityMenuItem(PdfQuality.ultra, 'คุณภาพสูงสุด (ช้า)'),
+      _buildQualityMenuItem(PdfQuality.low, localizations.lowQuality),
+      _buildQualityMenuItem(PdfQuality.medium, localizations.mediumQuality),
+      _buildQualityMenuItem(PdfQuality.high, localizations.highQuality),
+      _buildQualityMenuItem(PdfQuality.ultra, localizations.ultraQuality),
       const PopupMenuDivider(),
-      const PopupMenuItem(
+      PopupMenuItem(
         value: 'cache',
         child: Row(
           children: [
-            Icon(Icons.storage),
-            SizedBox(width: 8),
-            Text('จัดการ Cache'),
+            const Icon(Icons.storage),
+            const SizedBox(width: 8),
+            Text(localizations.cacheOptions),
           ],
         ),
       ),
     ];
   }
 
-  /// สร้างรายการเมนูสำหรับเลือกคุณภาพ
+  /// Create menu item for quality selection
   PopupMenuItem<String> _buildQualityMenuItem(
     PdfQuality quality,
     String label,
@@ -341,7 +348,7 @@ class _PDFScreenState extends State<PDFScreen> {
     );
   }
 
-  /// สร้างตัวแสดงหมายเลขหน้า
+  /// Create page number display
   Widget _buildPageCounter() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -376,8 +383,9 @@ class _PDFScreenState extends State<PDFScreen> {
     return _buildPdfView();
   }
 
-  /// สร้างหน้าจอแสดงสถานะ Loading
+  /// Create loading status screen
   Widget _buildLoadingView() {
+    final localizations = AppLocalizations.of(context)!;
     return Container(
       color: Colors.black,
       child: Center(
@@ -386,9 +394,9 @@ class _PDFScreenState extends State<PDFScreen> {
           children: [
             _buildProgressCircle(),
             const SizedBox(height: 24),
-            const Text(
-              'กำลังประมวลผล PDF...',
-              style: TextStyle(fontSize: 18, color: Colors.white),
+            Text(
+              localizations.processing,
+              style: const TextStyle(fontSize: 18, color: Colors.white),
             ),
             const SizedBox(height: 8),
             _buildProgressText(),
@@ -400,7 +408,7 @@ class _PDFScreenState extends State<PDFScreen> {
     );
   }
 
-  /// สร้างวงกลมแสดงความคืบหน้า
+  /// Create progress circle
   Widget _buildProgressCircle() {
     return SizedBox(
       width: 120,
@@ -431,18 +439,18 @@ class _PDFScreenState extends State<PDFScreen> {
     );
   }
 
-  /// สร้างข้อความแสดงความคืบหน้า
+  /// Create progress text
   Widget _buildProgressText() {
     return Text(
       processingProgress > 0
-          ? 'ประมวลผลแล้ว ${(processingProgress * 100).toInt()}% | กำลังแปลงหน้า PDF...'
-          : 'เริ่มต้นการประมวลผล PDF...',
+          ? 'Processing ${(processingProgress * 100).toInt()}% | Converting PDF pages...'
+          : 'Starting PDF processing...',
       style: const TextStyle(fontSize: 14, color: Colors.grey),
       textAlign: TextAlign.center,
     );
   }
 
-  /// สร้าง Progress Bar
+  /// Create Progress Bar
   Widget _buildProgressBar() {
     return Container(
       width: 200,
@@ -464,8 +472,9 @@ class _PDFScreenState extends State<PDFScreen> {
     );
   }
 
-  /// สร้างหน้าจอแสดงข้อผิดพลาด
+  /// Create error display screen
   Widget _buildErrorView() {
+    final localizations = AppLocalizations.of(context)!;
     return Container(
       color: Colors.black,
       child: Center(
@@ -486,7 +495,7 @@ class _PDFScreenState extends State<PDFScreen> {
                 backgroundColor: Colors.white,
                 foregroundColor: Colors.black,
               ),
-              child: const Text('ลองใหม่'),
+              child: Text(localizations.tryAgain),
             ),
           ],
         ),
@@ -494,20 +503,21 @@ class _PDFScreenState extends State<PDFScreen> {
     );
   }
 
-  /// สร้างหน้าจอเมื่อไม่พบหน้า PDF
+  /// Create screen when no PDF pages found
   Widget _buildEmptyView() {
+    final localizations = AppLocalizations.of(context)!;
     return Container(
       color: Colors.black,
-      child: const Center(
+      child: Center(
         child: Text(
-          'ไม่พบหน้า PDF',
-          style: TextStyle(fontSize: 16, color: Colors.white),
+          localizations.noPagesFound,
+          style: const TextStyle(fontSize: 16, color: Colors.white),
         ),
       ),
     );
   }
 
-  /// สร้างหน้าจอแสดง PDF
+  /// Create PDF display screen
   Widget _buildPdfView() {
     return Container(
       color: Colors.black,
@@ -527,28 +537,29 @@ class _PDFScreenState extends State<PDFScreen> {
     );
   }
 
-  /// สร้างหน้าสุดท้าย
+  /// Create last page
   Widget _buildLastPage() {
+    final localizations = AppLocalizations.of(context)!;
     return Container(
       color: Colors.black,
-      child: const Center(
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.check_circle_outline, size: 64, color: Colors.white),
-            SizedBox(height: 16),
+            const Icon(Icons.check_circle_outline, size: 64, color: Colors.white),
+            const SizedBox(height: 16),
             Text(
-              'จบเอกสาร',
-              style: TextStyle(
+              localizations.endOfDocument,
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              'หวัดดีและขอบคุณ',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+              localizations.thankYou,
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
           ],
         ),
@@ -558,10 +569,10 @@ class _PDFScreenState extends State<PDFScreen> {
 
   @override
   void dispose() {
-    // ล้าง document cache เมื่อปิดหน้าจอ
+    // Clear document cache when closing screen
     PdfDocumentCache.clearCache();
-    // ไม่ปิด wakelock ที่นี่ เพราะอาจจะกลับไปหน้าหลักและยังต้องการให้หน้าจอไม่ปิด
-    // wakelock จะถูกจัดการโดย lifecycle ของแอพ
+    // Don't disable wakelock here as we might return to main screen and still want screen to stay on
+    // wakelock will be managed by app lifecycle
     super.dispose();
   }
 }

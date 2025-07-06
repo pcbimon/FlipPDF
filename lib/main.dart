@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:provider/provider.dart';
 import 'pdf_screen.dart';
 import 'pdf_viewer_screen.dart';
+import 'localizations.dart';
+import 'language_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // เปิด wakelock เพื่อป้องกันหน้าจอปิด
+  // Enable wakelock to prevent screen from turning off
   WakelockPlus.enable();
 
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => LanguageProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -18,21 +27,33 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'PDF Flipbook',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      home: const FilePickerScreen(),
-      // เมื่อแอพถูกปิดให้ปิด wakelock ด้วย
-      builder: (context, child) {
-        return GestureDetector(
-          onTap: () {
-            // รีเซ็ต wakelock เมื่อมีการแตะหน้าจอ
-            WakelockPlus.enable();
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        return MaterialApp(
+          title: 'PDF Flipbook',
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+            useMaterial3: true,
+          ),
+          locale: languageProvider.currentLocale,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizationsDelegate(),
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: const FilePickerScreen(),
+          // When app is closed, disable wakelock as well
+          builder: (context, child) {
+            return GestureDetector(
+              onTap: () {
+                // Reset wakelock when screen is tapped
+                WakelockPlus.enable();
+              },
+              child: child,
+            );
           },
-          child: child,
         );
       },
     );
@@ -125,7 +146,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-// หน้าจอเลือกไฟล์ PDF
+// PDF File Picker Screen
 class FilePickerScreen extends StatefulWidget {
   const FilePickerScreen({super.key});
 
@@ -142,7 +163,7 @@ class _FilePickerScreenState extends State<FilePickerScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // ตรวจสอบสถานะ wakelock
+    // Check wakelock status
     _checkWakelockStatus();
   }
 
@@ -156,12 +177,12 @@ class _FilePickerScreenState extends State<FilePickerScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
-        // เมื่อแอพกลับมาทำงาน ให้เปิด wakelock
+        // When app resumes, enable wakelock
         WakelockPlus.enable();
         break;
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
-        // เมื่อแอพถูกย่อหรือปิด ให้ปิด wakelock เพื่อประหยัดแบตเตอรี่
+        // When app is paused or closed, disable wakelock to save battery
         WakelockPlus.disable();
         break;
       case AppLifecycleState.inactive:
@@ -193,19 +214,41 @@ class _FilePickerScreenState extends State<FilePickerScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาด: $e')));
+        final localizations = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(localizations!.errorOccurred(e.toString()))),
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('เลือกไฟล์ PDF'),
+        title: Text(localizations.selectPDFFile),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.language),
+            onSelected: (String languageCode) {
+              final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+              languageProvider.changeLanguage(Locale(languageCode));
+            },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'en',
+                child: Text(localizations.english),
+              ),
+              PopupMenuItem<String>(
+                value: 'th',
+                child: Text(localizations.thai),
+              ),
+            ],
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Center(
@@ -220,9 +263,9 @@ class _FilePickerScreenState extends State<FilePickerScreen>
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  'เลือกไฟล์ PDF เพื่อเปิดดูในรูปแบบ Flipbook',
-                  style: TextStyle(fontSize: 18),
+                Text(
+                  localizations.selectPDFToView,
+                  style: const TextStyle(fontSize: 18),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 10),
@@ -236,15 +279,15 @@ class _FilePickerScreenState extends State<FilePickerScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.screen_lock_rotation,
                         color: Colors.green,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
-                      const Text(
-                        'หน้าจอจะไม่ปิดระหว่างใช้งาน',
-                        style: TextStyle(
+                      Text(
+                        localizations.screenWillStayOn,
+                        style: const TextStyle(
                           color: Colors.green,
                           fontWeight: FontWeight.w500,
                         ),
@@ -256,7 +299,7 @@ class _FilePickerScreenState extends State<FilePickerScreen>
                 ElevatedButton.icon(
                   onPressed: _pickPDFFile,
                   icon: const Icon(Icons.file_upload),
-                  label: const Text('เลือกไฟล์ PDF'),
+                  label: Text(localizations.selectPDFButton),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -280,7 +323,7 @@ class _FilePickerScreenState extends State<FilePickerScreen>
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'ไฟล์ที่เลือก: $selectedFileName',
+                                  localizations.selectedFile(selectedFileName!),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -303,7 +346,7 @@ class _FilePickerScreenState extends State<FilePickerScreen>
                                     ),
                                   );
                                 },
-                                child: const Text('เปิด PDF Flipbook'),
+                                child: Text(localizations.openPDFFlipbook),
                               ),
                             ],
                           ),

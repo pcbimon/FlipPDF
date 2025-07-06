@@ -1,0 +1,133 @@
+{
+  "@@locale": "en",
+  "appTitle": "PDF Flipbook",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+  "selectPDFFile": "Select PDF File",
+  "@selectPDFFile": {
+    "description": "Title for file picker screen"
+  },
+  "selectPDFToView": "Select a PDF file to view as a Flipbook",
+  "@selectPDFToView": {
+    "description": "Instructions for selecting PDF"
+  },
+  "screenWillStayOn": "Screen will stay on during use",
+  "@screenWillStayOn": {
+    "description": "Wakelock status message"
+  },
+  "selectPDFButton": "Select PDF File",
+  "@selectPDFButton": {
+    "description": "Button text to select PDF"
+  },
+  "selectedFile": "Selected file: {fileName}",
+  "@selectedFile": {
+    "description": "Shows selected file name",
+    "placeholders": {
+      "fileName": {
+        "type": "String",
+        "description": "The name of the selected file"
+      }
+    }
+  },
+  "openPDFFlipbook": "Open PDF Flipbook",
+  "@openPDFFlipbook": {
+    "description": "Button text to open PDF flipbook"
+  },
+  "errorOccurred": "An error occurred: {error}",
+  "@errorOccurred": {
+    "description": "Error message",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "description": "The error message"
+      }
+    }
+  },
+  "pdfNotFound": "PDF file not found",
+  "@pdfNotFound": {
+    "description": "Error when PDF file is not found"
+  },
+  "cannotProcessPDF": "Cannot process PDF file",
+  "@cannotProcessPDF": {
+    "description": "Error when PDF cannot be processed"
+  },
+  "processing": "Processing...",
+  "@processing": {
+    "description": "Processing status message"
+  },
+  "lowQuality": "Low Quality (Fast)",
+  "@lowQuality": {
+    "description": "Low quality option for PDF processing"
+  },
+  "mediumQuality": "Medium Quality",
+  "@mediumQuality": {
+    "description": "Medium quality option for PDF processing"
+  },
+  "highQuality": "High Quality",
+  "@highQuality": {
+    "description": "High quality option for PDF processing"
+  },
+  "cacheOptions": "Cache Options",
+  "@cacheOptions": {
+    "description": "Cache options menu title"
+  },
+  "clearMemoryCache": "Clear Memory Cache",
+  "@clearMemoryCache": {
+    "description": "Option to clear memory cache"
+  },
+  "clearDiskCache": "Clear Disk Cache",
+  "@clearDiskCache": {
+    "description": "Option to clear disk cache"
+  },
+  "memoryCacheCleared": "Memory cache cleared",
+  "@memoryCacheCleared": {
+    "description": "Confirmation message for memory cache clearing"
+  },
+  "diskCacheCleared": "Disk cache cleared",
+  "@diskCacheCleared": {
+    "description": "Confirmation message for disk cache clearing"
+  },
+  "close": "Close",
+  "@close": {
+    "description": "Close button text"
+  },
+  "back": "Back",
+  "@back": {
+    "description": "Back button text"
+  },
+  "pdfFileNotExist": "PDF file does not exist in the system",
+  "@pdfFileNotExist": {
+    "description": "Error when PDF file doesn't exist"
+  },
+  "pageError": "Error occurred on page {page}: {error}",
+  "@pageError": {
+    "description": "Error message for specific page",
+    "placeholders": {
+      "page": {
+        "type": "int",
+        "description": "The page number where error occurred"
+      },
+      "error": {
+        "type": "String", 
+        "description": "The error message"
+      }
+    }
+  },
+  "confirmExit": "Do you want to exit PDF viewer?",
+  "@confirmExit": {
+    "description": "Confirmation dialog for exiting PDF viewer"
+  },
+  "yes": "Yes",
+  "@yes": {
+    "description": "Yes button text"
+  },
+  "no": "No",
+  "@no": {
+    "description": "No button text"
+  },
+  "language": "Language",
+  "@language": {
+    "description": "Language selection option"
+  }
+}
