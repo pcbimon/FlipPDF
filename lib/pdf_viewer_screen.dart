@@ -244,9 +244,73 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
         children: [
           _buildAutoPlayButton(),
           const SizedBox(width: 8),
+          _buildPageSelectorButton(),
+          const SizedBox(width: 8),
           _buildPageCounter(),
         ],
       ),
+    );
+  }
+
+  /// สร้างปุ่มเลือกหน้าที่ต้องการ
+  Widget _buildPageSelectorButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: IconButton(
+        icon: const Icon(Icons.list, color: Colors.white),
+        tooltip: 'เลือกหน้าที่ต้องการ',
+        onPressed: _showPageSelectorDialog,
+      ),
+    );
+  }
+
+  /// แสดง dialog สำหรับเลือกหน้าที่ต้องการ
+  void _showPageSelectorDialog() async {
+    if (totalPages == null || totalPages == 0) return;
+    final TextEditingController controller = TextEditingController();
+    int? selectedPage;
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('ไปยังหน้าที่...'),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              hintText: 'ระบุหมายเลขหน้า (1-${totalPages ?? 0})',
+            ),
+            autofocus: true,
+            onChanged: (value) {
+              final page = int.tryParse(value);
+              if (page != null && page > 0 && page <= (totalPages ?? 0)) {
+                selectedPage = page - 1;
+              } else {
+                selectedPage = null;
+              }
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('ยกเลิก'),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (selectedPage != null) {
+                  final pdfController = await _controller.future;
+                  pdfController.setPage(selectedPage!);
+                  Navigator.of(context).pop();
+                }
+              },
+              child: const Text('ไป'),
+            ),
+          ],
+        );
+      },
     );
   }
 
